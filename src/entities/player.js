@@ -30,6 +30,7 @@
     this.facingLeft = false;
     this.frame = 0;
     this.animTime = 0;
+    this.bob = 0;
     this.moving = false;
     this.muzzle = 0;
   };
@@ -47,12 +48,14 @@
     this.aim = U.angle(this.x, this.y, input.mouse.x, input.mouse.y);
     this.facingLeft = input.mouse.x < this.x;
 
-    // walk animation
+    // walk feedback: subtle vertical bob (single sprite, no frame swap)
+    this.frame = 0;
     if (this.moving) {
       this.animTime += dt;
-      if (this.animTime > 0.14) { this.frame = this.frame ? 0 : 1; this.animTime = 0; }
+      this.bob = Math.sin(this.animTime * 14) * 1.5;
     } else {
-      this.frame = 0; this.animTime = 0;
+      this.animTime = 0;
+      this.bob = 0;
     }
 
     // shooting
@@ -107,7 +110,7 @@
     // character sprite (blink when invulnerable)
     var blink = this.invuln > 0 && Math.floor(U.now() * 12) % 2 === 0;
     if (!blink) {
-      Assets.drawFrame(ctx, this.frame, this.x, this.y, this.size * 1.15, this.facingLeft);
+      Assets.drawFrame(ctx, this.frame, this.x, this.y + this.bob, this.size * 1.15, this.facingLeft);
     }
 
     // muzzle flash
