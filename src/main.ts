@@ -1,11 +1,37 @@
 import { Application } from 'pixi.js';
-import { CFG, P } from './config';
+import { CFG, P, type Difficulty } from './config';
 import { loadAssets } from './assets';
 import { Game } from './game';
+import { save, persist } from './save';
+import { audio } from './audio';
 
 declare global {
   interface Window {
     game?: Game;
+  }
+}
+
+/** Lê os controles de ajustes e aplica em save + áudio. */
+function applySettingsFromDom(): void {
+  const s = save();
+  const sfx = (document.getElementById('set-sfx') as HTMLInputElement | null)?.value;
+  const music = (document.getElementById('set-music') as HTMLInputElement | null)?.value;
+  const mute = (document.getElementById('set-mute') as HTMLInputElement | null)?.checked;
+  const diff = (document.getElementById('set-difficulty') as HTMLSelectElement | null)?.value as Difficulty | undefined;
+  if (sfx !== undefined) s.settings.sfxVol = Number(sfx) / 100;
+  if (music !== undefined) s.settings.musicVol = Number(music) / 100;
+  if (mute !== undefined) s.settings.muted = mute;
+  if (diff) s.settings.difficulty = diff;
+  audio.setVolumes(s.settings.sfxVol, s.settings.musicVol, s.settings.muted);
+  persist();
+}
+
+function wireSettings(): void {
+  const els = ['set-sfx', 'set-music', 'set-mute', 'set-difficulty'];
+  for (const id of els) {
+    const el = document.getElementById(id);
+    el?.addEventListener('input', applySettingsFromDom);
+    el?.addEventListener('change', applySettingsFromDom);
   }
 }
 
@@ -35,6 +61,14 @@ async function boot(): Promise<void> {
   const game = new Game(app);
   game.init();
   window.game = game;
+  document.body.dataset.touch = game.input.touchMode ? 'true' : 'false';
+  wireSettings();
+
+  const loading = document.getElementById('loading-screen');
+  if (loading) {
+    loading.classList.add('done');
+    setTimeout(() => loading.remove(), 600);
+  }
 }
 
 void boot();

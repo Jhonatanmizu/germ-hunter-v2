@@ -1,6 +1,6 @@
 import { Container, Graphics } from 'pixi.js';
 import type { Player } from './player';
-import type { BossProjectileType } from './bossProjectile';
+import type { ShotType } from './enemyShot';
 import { U } from '../utils';
 import { P } from '../config';
 import { drawMegaVirus } from '../sprites';
@@ -9,7 +9,7 @@ import type { CFG } from '../config';
 type CfgType = typeof CFG;
 
 interface PendingShot {
-  type: BossProjectileType;
+  type: ShotType;
   x: number;
   y: number;
   angle: number;
@@ -46,11 +46,11 @@ export class Boss {
   private chargeDir = 1;
   private chargeSpeed = 0;
 
-  constructor(cfg: CfgType, layer: Container) {
+  constructor(cfg: CfgType, layer: Container, hpMul = 1) {
     this.cfg = cfg;
     this.layer = layer;
-    this.maxHp = cfg.BOSS.maxHp;
-    this.hp = cfg.BOSS.maxHp;
+    this.maxHp = Math.round(cfg.BOSS.maxHp * hpMul);
+    this.hp = this.maxHp;
     this.radius = cfg.BOSS.size * 0.42;
     this.x = cfg.W / 2;
     this.y = -cfg.BOSS.size * 0.6;

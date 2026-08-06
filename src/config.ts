@@ -1,6 +1,7 @@
 /**
  * Paleta de cores (números para o PixiJS) e constantes de balanceamento.
  */
+
 export const P = {
   bgDeep: 0x020d2a,
   bgDark: 0x0a0f2b,
@@ -32,6 +33,16 @@ export const P = {
   charBlueDark: 0x103060
 } as const;
 
+export type Difficulty = 'easy' | 'normal' | 'hard';
+export type GameMode = 'story' | 'endless';
+export type GermKind = 'virus' | 'bacteria' | 'charger' | 'spitter' | 'elite';
+
+export const DIFFICULTY: Record<Difficulty, { hp: number; speedMul: number; spawnMul: number; contamMul: number; bossHpMul: number }> = {
+  easy: { hp: 6, speedMul: 0.85, spawnMul: 1.35, contamMul: 0.7, bossHpMul: 0.7 },
+  normal: { hp: 5, speedMul: 1, spawnMul: 1, contamMul: 1, bossHpMul: 1 },
+  hard: { hp: 4, speedMul: 1.18, spawnMul: 0.8, contamMul: 1.3, bossHpMul: 1.35 }
+};
+
 export const CFG = {
   W: 480,
   H: 320,
@@ -42,7 +53,10 @@ export const CFG = {
     maxHealth: 5,
     invulnTime: 1.0,
     fireRate: 0.28,
-    bulletSpeed: 260
+    bulletSpeed: 260,
+    dashSpeed: 360,
+    dashTime: 0.18,
+    dashCooldown: 0.75
   },
 
   BULLET: {
@@ -53,8 +67,8 @@ export const CFG = {
 
   GERM: {
     sprite: 26,
-    bacteriaPoints: 10,
     virusPoints: 15,
+    bacteriaPoints: 10,
     bacteriaSpeed: [34, 48, 62],
     virusSpeed: [54, 72, 96],
     maxGerms: [6, 9, 13],
@@ -62,6 +76,35 @@ export const CFG = {
     bacteriaChance: [0.65, 0.55, 0.45],
     contactContam: 8,
     escapeContam: 6
+  },
+
+  ENEMY: {
+    charger: { size: 24, hp: 2, speed: 165, points: 20 },
+    spitter: { size: 22, hp: 1, speed: 45, points: 25, fireRate: 2.4, fireSpeed: 95 },
+    elite: { size: 42, hp: 9, speed: 42, points: 100, ringCount: 10, fireRate: 3.2 }
+  },
+
+  COMBO: {
+    window: 1.4,
+    step: 4,
+    maxMult: 5
+  },
+
+  ENDLESS: {
+    waveDuration: 12,
+    maxGermsBase: 7,
+    maxGermsStep: 1,
+    spawnRateStart: 1.0,
+    spawnRateDrop: 0.07,
+    spawnRateMin: 0.3,
+    eliteEvery: 4
+  },
+
+  HITSTOP: {
+    kill: 0.035,
+    bossHit: 0.06,
+    playerHit: 0.12,
+    bossDeath: 0.3
   },
 
   POWERUP: {

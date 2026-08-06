@@ -8,6 +8,8 @@ export class AudioSystem {
   private musicIdx = 0;
   private musicTimer = 0;
   muted = false;
+  sfxVol = 0.8;
+  musicVol = 0.6;
 
   init(): void {
     if (!this.ctx) {
@@ -18,14 +20,21 @@ export class AudioSystem {
     if (this.ctx && this.ctx.state === 'suspended') void this.ctx.resume();
   }
 
-  private tone(freq: number, dur: number, type: OscillatorType, gain: number, delay = 0): void {
+  setVolumes(sfx: number, music: number, muted: boolean): void {
+    this.sfxVol = sfx;
+    this.musicVol = music;
+    this.muted = muted;
+  }
+
+  private tone(freq: number, dur: number, type: OscillatorType, gain: number, delay = 0, music = false): void {
     if (!this.ctx || this.muted) return;
+    const v = music ? this.musicVol : this.sfxVol;
     const t = this.ctx.currentTime + delay;
     const o = this.ctx.createOscillator();
     const g = this.ctx.createGain();
     o.type = type;
     o.frequency.setValueAtTime(freq, t);
-    g.gain.setValueAtTime(gain, t);
+    g.gain.setValueAtTime(gain * v, t);
     g.gain.exponentialRampToValueAtTime(0.001, t + dur);
     o.connect(g);
     g.connect(this.ctx.destination);
@@ -35,13 +44,14 @@ export class AudioSystem {
 
   private sweep(f1: number, f2: number, dur: number, type: OscillatorType, gain: number, delay = 0): void {
     if (!this.ctx || this.muted) return;
+    const v = this.sfxVol;
     const t = this.ctx.currentTime + delay;
     const o = this.ctx.createOscillator();
     const g = this.ctx.createGain();
     o.type = type;
     o.frequency.setValueAtTime(f1, t);
     o.frequency.linearRampToValueAtTime(f2, t + dur);
-    g.gain.setValueAtTime(gain, t);
+    g.gain.setValueAtTime(gain * v, t);
     g.gain.exponentialRampToValueAtTime(0.001, t + dur);
     o.connect(g);
     g.connect(this.ctx.destination);
@@ -120,6 +130,25 @@ export class AudioSystem {
     this.sweep(500, 900, 0.08, 'square', 0.05, 0.03);
   }
 
+  dash(): void {
+    this.sweep(250, 900, 0.14, 'square', 0.07);
+  }
+
+  combo(level: number): void {
+    this.tone(440 + level * 80, 0.05, 'square', 0.05);
+  }
+
+  waveUp(): void {
+    this.tone(392, 0.08, 'triangle', 0.08, 0);
+    this.tone(523, 0.12, 'triangle', 0.08, 0.09);
+  }
+
+  achievement(): void {
+    this.tone(659, 0.1, 'triangle', 0.09, 0);
+    this.tone(880, 0.1, 'triangle', 0.09, 0.1);
+    this.tone(1175, 0.2, 'triangle', 0.1, 0.2);
+  }
+
   click(): void {
     this.tone(600, 0.03, 'square', 0.04);
   }
@@ -149,8 +178,8 @@ export class AudioSystem {
       this.musicTimer -= this.pattern.tempo;
       const f = this.pattern.notes[this.musicIdx % this.pattern.notes.length];
       this.musicIdx++;
-      this.tone(f, this.pattern.tempo * 0.7, 'square', 0.025);
-      if (this.musicIdx % 3 === 0) this.tone(f * 1.5, this.pattern.tempo * 0.4, 'triangle', 0.015);
+      this.tone(f, this.pattern.tempo * 0.7, 'square', 0.025, 0, true);
+      if (this.musicIdx % 3 === 0) this.tone(f * 1.5, this.pattern.tempo * 0.4, 'triangle', 0.015, 0, true);
     }
   }
 }

@@ -12,12 +12,16 @@ export interface GameStats {
   health: number;
   maxHealth: number;
   boss?: { hp: number; maxHp: number } | null;
+  comboMult: number;
+  dashReady: number;
+  wave: number;
+  mode: 'story' | 'endless';
 }
 
 const FONT = '"Press Start 2P", monospace';
 const PHASE_COLORS = [P.cyan, P.green, P.yellow];
 
-/** HUD: fase, pontuação, tempo, contaminação, corações, objetivo, barra do chefe e legendas. */
+/** HUD: fase, pontuação, tempo, contaminação, corações, combo, dash, chefe e legendas. */
 export class HUD {
   readonly container = new Container();
   private bg = new Graphics();
@@ -29,6 +33,9 @@ export class HUD {
   private timeText: Text;
   private pctText: Text;
   private objectiveText: Text;
+  private comboText: Text;
+  private waveText: Text;
+  private dashBar = new Graphics();
   private bossLabel: Text;
   private subtitle: Text;
   private subtitleTimer = 0;
@@ -56,6 +63,14 @@ export class HUD {
       text: '',
       style: { fontFamily: FONT, fontSize: 7, fill: P.cyanMid }
     });
+    this.comboText = new Text({
+      text: '',
+      style: { fontFamily: FONT, fontSize: 9, fill: P.yellow }
+    });
+    this.waveText = new Text({
+      text: '',
+      style: { fontFamily: FONT, fontSize: 8, fill: P.yellow }
+    });
     this.bossLabel = new Text({
       text: 'CHEFE',
       style: { fontFamily: FONT, fontSize: 7, fill: P.red }
@@ -76,6 +91,8 @@ export class HUD {
     this.timeText.anchor.set(1, 0.5);
     this.pctText.anchor.set(0.5, 0.5);
     this.objectiveText.anchor.set(0, 0.5);
+    this.comboText.anchor.set(0, 0.5);
+    this.waveText.anchor.set(1, 0.5);
     this.bossLabel.anchor.set(0.5, 0.5);
     this.subtitle.anchor.set(0.5, 0.5);
 
@@ -103,7 +120,10 @@ export class HUD {
       this.timeText,
       this.pctText,
       this.objectiveText,
+      this.comboText,
+      this.waveText,
       this.bossLabel,
+      this.dashBar,
       this.subtitle
     );
   }
@@ -131,8 +151,8 @@ export class HUD {
     this.bg.rect(0, 0, w, 30).fill({ color: P.bgDeep, alpha: 0.78 });
     this.bg.rect(0, 30, w, 1).fill({ color: P.cyan, alpha: 0.5 });
 
-    this.phaseText.text = 'F' + stats.phase;
-    this.phaseText.style.fill = PHASE_COLORS[stats.phase - 1] ?? P.cyan;
+    this.phaseText.text = stats.mode === 'endless' ? '∞' : 'F' + stats.phase;
+    this.phaseText.style.fill = stats.mode === 'endless' ? P.yellow : (PHASE_COLORS[stats.phase - 1] ?? P.cyan);
     this.phaseText.position.set(8, 15);
 
     this.scoreText.text = 'PTS:' + stats.score;
@@ -170,8 +190,23 @@ export class HUD {
       this.heart(hx + i * 12, hy, 4, full ? P.red : { color: P.textDark, alpha: 0.6 });
     }
 
-    this.objectiveText.text = STORY.phases[stats.phase - 1]?.objective ?? '';
+    this.objectiveText.text = stats.mode === 'endless' ? STORY.endless.objective : (STORY.phases[stats.phase - 1]?.objective ?? '');
     this.objectiveText.position.set(8, 36);
+
+    // combo
+    this.comboText.text = stats.comboMult > 1 ? 'COMBO x' + stats.comboMult : '';
+    this.comboText.position.set(8, 45);
+
+    // onda (modo sobrevivência)
+    this.waveText.text = stats.mode === 'endless' ? 'ONDA ' + stats.wave : '';
+    this.waveText.position.set(w - 8, 36);
+
+    // indicador de dash
+    this.dashBar.clear();
+    const dX = 8;
+    const dY = h - 20;
+    this.dashBar.rect(dX, dY, 40, 4).fill({ color: P.textDark, alpha: 0.5 });
+    this.dashBar.rect(dX, dY, 40 * stats.dashReady, 4).fill(stats.dashReady >= 1 ? P.cyan : { color: P.teal, alpha: 0.7 });
 
     // barra do chefe (Fase 3)
     this.bossBar.clear();

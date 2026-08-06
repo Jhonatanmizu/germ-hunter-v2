@@ -2,12 +2,12 @@ import { Container, Graphics } from 'pixi.js';
 import { U } from '../utils';
 import { drawVirus, drawBacteria } from '../sprites';
 
-export type BossProjectileType = 'virus' | 'bacteria';
+export type ShotType = 'virus' | 'bacteria';
 
-/** Projétil disparado pelo Esporo-Mestre. Pode ser destruído pelo soro do jogador. */
-export class BossProjectile {
+/** Projétil inimigo (chefe ou germes). Pode ser destruído pelo soro do jogador. */
+export class EnemyShot {
   readonly g = new Graphics();
-  type: BossProjectileType;
+  type: ShotType;
   size: number;
   radius: number;
   x: number;
@@ -18,7 +18,7 @@ export class BossProjectile {
   private layer: Container;
 
   constructor(
-    type: BossProjectileType,
+    type: ShotType,
     x: number,
     y: number,
     angle: number,

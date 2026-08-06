@@ -36,5 +36,10 @@ export const U = {
     const m = Math.floor(seconds / 60);
     const s = Math.floor(seconds % 60);
     return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+  },
+
+  formatTimeShort(ts: number): string {
+    const d = new Date(ts);
+    return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0');
   }
 };

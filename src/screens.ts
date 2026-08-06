@@ -1,10 +1,18 @@
 import { CONTENT, STORY } from './content';
 import { U } from './utils';
+import { audio } from './audio';
+import { save, persist } from './save';
+import { ACHIEVEMENTS } from './achievements';
 import type { GameStats } from './hud';
 
-/** Gerenciador de telas DOM (menu, história, cutscene, instruções, fase, game over, final, créditos). */
+/** Gerenciador de telas DOM (menu, história, cutscene, instruções, fase, pausa, ajustes, recordes, conquistas, game over, final, créditos). */
 export class ScreenManager {
   current = 'menu';
+  private settingsReturnTo: 'menu' | 'pause' = 'menu';
+
+  get returnToPause(): boolean {
+    return this.settingsReturnTo === 'pause';
+  }
 
   // ---- cutscene (máquina de escrever) ----
   private cutscenePageIdx = 0;
@@ -70,10 +78,14 @@ export class ScreenManager {
     const target = document.getElementById(id);
     if (target) target.classList.add('active');
     this.current = id.replace('-screen', '');
+    document.body.dataset.screen = this.current;
   }
 
   showMenu(): void {
     this.clearTyper();
+    const best = Math.max(save().bestScore, save().endlessBest);
+    const label = document.getElementById('best-label');
+    if (label) label.textContent = best > 0 ? 'MELHOR: ' + best.toLocaleString('pt-BR') : 'SEM RECORDES AINDA';
     this.set('menu-screen');
   }
 
@@ -169,9 +181,7 @@ export class ScreenManager {
   private updateCutsceneHint(): void {
     const hint = document.getElementById('cutscene-hint');
     if (!hint) return;
-    if (this.cutsceneTyping) {
-      hint.textContent = 'PRESSIONE ENTER ▸';
-    } else if (!this.cutsceneReady) {
+    if (this.cutsceneTyping || !this.cutsceneReady) {
       hint.textContent = 'PRESSIONE ENTER ▸';
     } else if (this.cutscenePageIdx >= STORY.cutscene.length - 1) {
       hint.textContent = 'PRESSIONE ENTER PARA COMEÇAR ▶';
@@ -180,12 +190,6 @@ export class ScreenManager {
     }
   }
 
-  /**
-   * Avança a cutscene. Retorna:
-   * 'typing' — a linha atual foi completada;
-   * 'page' — avançou para a próxima linha/página;
-   * 'done' — cutscene terminou.
-   */
   cutsceneAdvance(): 'typing' | 'page' | 'done' {
     if (this.cutsceneTyping) {
       this.finishCutsceneLine();
@@ -217,6 +221,113 @@ export class ScreenManager {
     this.set('credits-screen');
   }
 
+  showEndlessIntro(): void {
+    this.clearTyper();
+    const msg = document.getElementById('endless-intro');
+    if (msg) msg.textContent = STORY.endless.intro;
+    this.set('endless-screen');
+  }
+
+  showPause(): void {
+    this.clearTyper();
+    this.set('pause-screen');
+  }
+
+  showSettings(returnTo: 'menu' | 'pause'): void {
+    this.clearTyper();
+    this.settingsReturnTo = returnTo;
+    const s = save().settings;
+    const sfx = document.getElementById('set-sfx') as HTMLInputElement | null;
+    const music = document.getElementById('set-music') as HTMLInputElement | null;
+    const mute = document.getElementById('set-mute') as HTMLInputElement | null;
+    const diff = document.getElementById('set-difficulty') as HTMLSelectElement | null;
+    if (sfx) sfx.value = String(Math.round(s.sfxVol * 100));
+    if (music) music.value = String(Math.round(s.musicVol * 100));
+    if (mute) mute.checked = s.muted;
+    if (diff) diff.value = s.difficulty;
+    const back = document.getElementById('settings-back');
+    if (back) back.textContent = returnTo === 'pause' ? '← VOLTAR AO JOGO' : '← VOLTAR';
+    this.set('settings-screen');
+  }
+
+  applySettings(): void {
+    const s = save().settings;
+    audio.setVolumes(s.sfxVol, s.musicVol, s.muted);
+    persist();
+  }
+
+  showRecords(): void {
+    this.clearTyper();
+    const list = document.getElementById('records-list');
+    if (list) {
+      list.innerHTML = '';
+      const scores = save().highScores;
+      if (!scores.length) {
+        const p = document.createElement('div');
+        p.className = 'credits-block';
+        p.textContent = 'Nenhum recorde ainda. Jogue para fazer história!';
+        list.appendChild(p);
+      } else {
+        scores.forEach((s, i) => {
+          const row = document.createElement('div');
+          row.className = 'record-row';
+          const tag = s.mode === 'endless' ? '∞ ONDA ' + s.wave : 'F' + s.wave;
+          row.innerHTML =
+            '<span class="record-pos">' +
+            (i + 1) +
+            'º</span><span class="record-score">' +
+            s.score.toLocaleString('pt-BR') +
+            '</span><span class="record-meta">' +
+            tag +
+            ' • ' +
+            U.formatTimeShort(s.date) +
+            '</span>';
+          list.appendChild(row);
+        });
+      }
+    }
+    this.set('records-screen');
+  }
+
+  showAchievements(): void {
+    this.clearTyper();
+    const list = document.getElementById('achievements-list');
+    if (list) {
+      list.innerHTML = '';
+      for (const a of ACHIEVEMENTS) {
+        const locked = !(a.id in save().achievements);
+        const row = document.createElement('div');
+        row.className = 'achievement-row' + (locked ? ' locked' : '');
+        row.innerHTML =
+          '<span class="achievement-icon">' +
+          (locked ? '🔒' : a.icon) +
+          '</span><span class="achievement-text"><b>' +
+          a.name +
+          '</b><br><small>' +
+          a.desc +
+          '</small></span><span class="achievement-state">' +
+          (locked ? '—' : '✔') +
+          '</span>';
+        list.appendChild(row);
+      }
+    }
+    this.set('achievements-screen');
+  }
+
+  /** Toast de conquista. */
+  showToast(title: string): void {
+    const box = document.getElementById('toasts');
+    if (!box) return;
+    const el = document.createElement('div');
+    el.className = 'toast';
+    el.textContent = '🏆 ' + title;
+    box.appendChild(el);
+    setTimeout(() => {
+      el.classList.add('out');
+      setTimeout(() => el.remove(), 500);
+    }, 3200);
+  }
+
   showPhase(phase: number): void {
     this.clearTyper();
     const n = document.getElementById('phase-number');
@@ -238,23 +349,34 @@ export class ScreenManager {
       c.classList.toggle('boss-curiosity', phase === 3);
     }
     const btn = document.getElementById('phase-btn');
-    if (btn) {
-      btn.textContent = phase === 1 ? '▶ COMEÇAR' : '▶ CONTINUAR';
-      btn.textContent = phase === 3 ? '⚔ ENFRENTAR' : btn.textContent;
-    }
+    if (btn) btn.textContent = phase === 1 ? '▶ COMEÇAR' : phase === 3 ? '⚔ ENFRENTAR' : '▶ CONTINUAR';
     this.set('phase-screen');
   }
 
-  showGameOver(stats: GameStats): void {
+  showGameOver(stats: GameStats, isNewRecord: boolean): void {
     const line = document.getElementById('gameover-line');
     if (line) line.textContent = STORY.gameOverLine;
+    const rec = document.getElementById('gameover-record');
+    if (rec) {
+      rec.textContent = isNewRecord ? '★ NOVO RECORDE! ★' : 'MELHOR: ' + Math.max(save().bestScore, save().endlessBest).toLocaleString('pt-BR');
+      rec.style.color = isNewRecord ? 'var(--yellow)' : 'var(--text-dim)';
+    }
+    const waveRow = document.getElementById('final-wave-row');
+    const waveVal = document.getElementById('final-wave');
+    if (waveRow) waveRow.style.display = stats.mode === 'endless' ? '' : 'none';
+    if (waveVal) waveVal.textContent = String(stats.wave);
     this.fillStats('final-', stats);
     this.set('gameover-screen');
   }
 
-  showEnding(stats: GameStats): void {
+  showEnding(stats: GameStats, isNewRecord: boolean): void {
     const msg = document.getElementById('ending-message');
     if (msg) msg.textContent = STORY.ending.message;
+    const rec = document.getElementById('ending-record');
+    if (rec) {
+      rec.textContent = isNewRecord ? '★ NOVO RECORDE! ★' : 'MELHOR: ' + save().bestScore.toLocaleString('pt-BR');
+      rec.style.color = isNewRecord ? 'var(--yellow)' : 'var(--text-dim)';
+    }
     this.fillStats('ending-', stats);
     this.set('ending-screen');
   }
@@ -264,9 +386,9 @@ export class ScreenManager {
       const el = document.getElementById(prefix + id);
       if (el) el.textContent = val;
     };
-    set('score', String(stats.score));
+    set('score', stats.score.toLocaleString('pt-BR'));
     set('germs', String(stats.germsEliminated));
-    set('phase', String(stats.phase));
+    set('phase', stats.mode === 'endless' ? '∞' : String(stats.phase));
     set('time', U.formatTime(stats.elapsedTime));
     set('contam', Math.floor(stats.contamination) + '%');
   }
@@ -277,5 +399,6 @@ export class ScreenManager {
       el.classList.remove('active');
     }
     this.current = 'playing';
+    document.body.dataset.screen = 'playing';
   }
 }

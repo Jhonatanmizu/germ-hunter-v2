@@ -157,7 +157,13 @@ export const STORY = {
       'O Esporo-Mestre foi destruído e o Manto Vermelho recuou! As luzes de Áureo Sol voltaram a acender e as ruas estão seguras. Graças ao Doutor Juryscleitin, a cidade renasceu!'
   },
 
-  gameOverLine: 'O Manto Vermelho cobriu Áureo Sol... A cidade foi contaminada!'
+  gameOverLine: 'O Manto Vermelho cobriu Áureo Sol... A cidade foi contaminada!',
+
+  endless: {
+    intro:
+      'A quarentena não tem fim. Em Áureo Sol, o Manto Vermelho nunca recua — só cresce. Quantas ondas você consegue conter?',
+    objective: 'SOBREVIVA ÀS ONDAS DO MANTO'
+  }
 };
 
 export const CONTENT = {
@@ -193,7 +199,7 @@ export const CONTENT = {
     '<b>Propósito:</b><br>Ensinar de forma divertida a importância da higiene e vacinação.'
   ],
 
-  controls: 'WASD / Setas: mover &nbsp;•&nbsp; Mouse: mirar &nbsp;•&nbsp; Clique / Espaço: atirar'
+  controls: 'WASD / Setas: mover &nbsp;•&nbsp; Mouse: mirar &nbsp;•&nbsp; Clique / Espaço: atirar &nbsp;•&nbsp; Shift / E: dash'
 };
 
 export type DialogueKey = keyof typeof STORY.dialogues;
