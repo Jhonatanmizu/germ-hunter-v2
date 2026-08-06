@@ -40,8 +40,9 @@ body {
 
 #game-wrapper {
   position: relative;
-  width: 960px; height: 640px;
-  padding: 26px 0;
+  aspect-ratio: 3 / 2;
+  width: min(100vw, calc((100vh - 16px) * 1.5));
+  max-height: calc(100vh - 16px);
   background: #000;
   border: 3px solid var(--cyan);
   box-shadow: 0 0 80px rgba(7,245,245,0.25), inset 0 0 50px rgba(2,13,42,0.9);
@@ -347,7 +348,6 @@ body[data-touch="true"][data-screen="playing"] .touch-hint-move { display: block
 }
 
 @media (max-width: 980px) {
-  #game-wrapper { width: 100vw; height: 66vw; max-height: 100vh; padding: 16px 0; border-width: 2px; border-radius: 0; }
   .pixel-title { font-size: 26px; }
   .pixel-subtitle { font-size: 11px; }
   .btn { font-size: 11px; padding: 12px 24px; min-width: 190px; }

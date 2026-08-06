@@ -35,6 +35,23 @@ function wireSettings(): void {
   }
 }
 
+/** Ajusta o tamanho do jogo para preencher a janela inteira, preservando 3:2. */
+function fitWrapper(): void {
+  const wrapper = document.getElementById('game-wrapper');
+  if (!wrapper) return;
+  const margin = 8;
+  const maxW = window.innerWidth - margin * 2;
+  const maxH = window.innerHeight - margin * 2;
+  let w = maxW;
+  let h = w * (2 / 3);
+  if (h > maxH) {
+    h = maxH;
+    w = h * (3 / 2);
+  }
+  wrapper.style.width = Math.floor(w) + 'px';
+  wrapper.style.height = Math.floor(h) + 'px';
+}
+
 async function boot(): Promise<void> {
   await loadAssets();
   try {
@@ -63,6 +80,10 @@ async function boot(): Promise<void> {
   window.game = game;
   document.body.dataset.touch = game.input.touchMode ? 'true' : 'false';
   wireSettings();
+
+  fitWrapper();
+  window.addEventListener('resize', fitWrapper);
+  window.addEventListener('orientationchange', fitWrapper);
 
   const loading = document.getElementById('loading-screen');
   if (loading) {
