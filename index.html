@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Caçador de Germes: Missão Saúde</title>
+<title>Caçador de Germes: Crônicas de Áureo Sol</title>
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 <style>
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
@@ -45,8 +45,13 @@ body {
   image-rendering: pixelated; -ms-interpolation-mode: nearest-neighbor;
 }
 
-canvas {
-  display: block; width: 100%; height: 100%;
+#game-host {
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+}
+
+#game-host canvas {
+  display: block;
+  width: 100% !important; height: 100% !important;
   image-rendering: pixelated; -ms-interpolation-mode: nearest-neighbor;
   cursor: crosshair;
 }
@@ -56,7 +61,7 @@ canvas {
   display: flex; flex-direction: column; justify-content: center; align-items: center;
   background: rgba(2,13,42,0.86); z-index: 10;
   opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
-  padding: 20px;
+  padding: 20px; overflow-y: auto;
 }
 .screen.active { opacity: 1; pointer-events: auto; }
 
@@ -105,6 +110,22 @@ canvas {
 }
 .screen-text strong, .screen-text b { color: var(--cyan); }
 
+.story-scroll {
+  max-height: 340px; overflow-y: auto; width: 100%; max-width: 560px;
+  padding: 0 20px;
+}
+.story-paragraph {
+  font-size: 11px; color: var(--text); text-align: center;
+  line-height: 2.0; margin: 14px 0;
+}
+.story-hero {
+  background: rgba(7,245,245,0.08); border: 2px solid var(--cyan);
+  border-radius: 6px; padding: 14px 18px; max-width: 540px; margin: 14px 0;
+  font-size: 10px; color: var(--cyan-mid); text-align: center; line-height: 1.9;
+  box-shadow: 0 0 20px rgba(7,245,245,0.15);
+}
+.story-hero b { color: var(--cyan); }
+
 .instruction-item {
   display: flex; align-items: center; gap: 12px; margin: 9px 0;
   font-size: 10px; color: var(--text); text-align: left;
@@ -131,10 +152,10 @@ canvas {
   box-shadow: 0 0 20px rgba(7,245,245,0.15);
 }
 
-.game-over-stats {
+.game-over-stats, .ending-stats {
   font-size: 13px; color: #fff; text-align: center; line-height: 2.2; margin: 14px 0;
 }
-.game-over-stats span { color: var(--yellow); }
+.game-over-stats span, .ending-stats span { color: var(--yellow); }
 
 .credits-block { font-size: 11px; color: var(--text-dim); margin: 8px 0; line-height: 1.9; }
 .credits-block b { color: var(--cyan); }
@@ -150,10 +171,12 @@ canvas {
   .pixel-subtitle { font-size: 11px; }
   .btn { font-size: 11px; padding: 12px 24px; min-width: 190px; }
   .screen-text { font-size: 9px; }
+  .story-paragraph { font-size: 9px; }
+  .story-hero { font-size: 8px; }
   .instruction-item { font-size: 8px; }
   .phase-message { font-size: 12px; }
   .curiosity-box { font-size: 8px; }
-  .game-over-stats { font-size: 10px; }
+  .game-over-stats, .ending-stats { font-size: 10px; }
 }
 @media (max-width: 520px) {
   .pixel-title { font-size: 20px; }
@@ -164,14 +187,23 @@ canvas {
 <body>
 
 <div id="game-wrapper">
-  <canvas id="gameCanvas"></canvas>
+  <div id="game-host"></div>
 
   <div id="menu-screen" class="screen active">
     <div class="pixel-title" style="font-size:34px;line-height:1.4;">CAÇADOR<br>DE GERMES</div>
-    <div class="pixel-subtitle">MISSÃO SAÚDE</div>
-    <button class="btn" onclick="game.startGame()">▶ JOGAR</button>
-    <button class="btn" onclick="game.showInstructions()">❓ INSTRUÇÕES</button>
-    <button class="btn" onclick="game.showCredits()">★ CRÉDITOS</button>
+    <div class="pixel-subtitle">Crônicas de Áureo Sol</div>
+    <button class="btn" onclick="window.game.startGame()">▶ JOGAR</button>
+    <button class="btn" onclick="window.game.showStory()">📜 A HISTÓRIA</button>
+    <button class="btn" onclick="window.game.showInstructions()">❓ INSTRUÇÕES</button>
+    <button class="btn" onclick="window.game.showCredits()">★ CRÉDITOS</button>
+  </div>
+
+  <div id="story-screen" class="screen">
+    <div class="pixel-title" style="font-size:22px;margin-bottom:14px;">A QUEDA DE ÁUREO SOL</div>
+    <div class="story-scroll" id="story-paragraphs"></div>
+    <div class="story-hero" id="story-hero"></div>
+    <button class="btn btn-green" onclick="window.game.startMission()">▶ COMEÇAR MISSÃO</button>
+    <button class="btn" onclick="window.game.showMenu()" style="margin-top:6px;">← MENU</button>
   </div>
 
   <div id="instructions-screen" class="screen">
@@ -179,55 +211,53 @@ canvas {
     <div id="instructions-list"></div>
     <div class="screen-text" id="instructions-footer"></div>
     <div id="instructions-controls"></div>
-    <button class="btn btn-green" onclick="game.showMenu()" style="margin-top:14px;">← VOLTAR</button>
+    <button class="btn btn-green" onclick="window.game.showMenu()" style="margin-top:14px;">← VOLTAR</button>
   </div>
 
   <div id="phase-screen" class="screen">
     <div class="pixel-title" style="font-size:24px;margin-bottom:8px;">FASE <span id="phase-number">1</span></div>
+    <div class="phase-message" id="phase-title" style="font-size:13px;color:var(--cyan);margin-bottom:6px;"></div>
     <div class="phase-message" id="phase-message"></div>
     <div class="curiosity-box" id="phase-curiosity"></div>
-    <button class="btn btn-green" onclick="game.startPlaying()" id="phase-btn">▶ COMEÇAR</button>
+    <button class="btn btn-green" onclick="window.game.startPlaying()" id="phase-btn">▶ COMEÇAR</button>
   </div>
 
   <div id="gameover-screen" class="screen">
     <div class="pixel-title" style="font-size:26px;color:#ff6b6b;margin-bottom:14px;">GAME OVER</div>
-    <div class="screen-text" style="font-size:13px;color:#ffcdd2;">A cidade foi contaminada!</div>
+    <div class="screen-text" style="font-size:13px;color:#ffcdd2;" id="gameover-line"></div>
     <div class="game-over-stats">
       Pontuação Final: <span id="final-score">0</span><br>
       Germes Eliminados: <span id="final-germs">0</span><br>
       Fase Atingida: <span id="final-phase">1</span><br>
       Tempo: <span id="final-time">00:00</span>
     </div>
-    <button class="btn btn-red" onclick="game.showMenu()">← MENU</button>
-    <button class="btn btn-green" onclick="game.startGame()">↻ TENTAR NOVAMENTE</button>
+    <button class="btn btn-red" onclick="window.game.showMenu()">← MENU</button>
+    <button class="btn btn-green" onclick="window.game.startGame()">↻ TENTAR NOVAMENTE</button>
+  </div>
+
+  <div id="ending-screen" class="screen">
+    <div class="pixel-title" style="font-size:26px;color:var(--green);margin-bottom:14px;">CIDADE SALVA!</div>
+    <div class="screen-text" style="font-size:13px;color:#d8f7c0;" id="ending-message"></div>
+    <div class="ending-stats">
+      Pontuação Final: <span id="ending-score">0</span><br>
+      Germes Eliminados: <span id="ending-germs">0</span><br>
+      Fase Atingida: <span id="ending-phase">3</span><br>
+      Tempo: <span id="ending-time">00:00</span><br>
+      Contaminação: <span id="ending-contam">0%</span>
+    </div>
+    <button class="btn btn-green" onclick="window.game.startGame()">↻ JOGAR NOVAMENTE</button>
+    <button class="btn" onclick="window.game.showMenu()" style="margin-top:6px;">← MENU</button>
   </div>
 
   <div id="credits-screen" class="screen">
     <div class="pixel-title" style="font-size:22px;margin-bottom:18px;">CRÉDITOS</div>
     <div id="credits-text" class="screen-text"></div>
-    <button class="btn" onclick="game.showMenu()" style="margin-top:14px;">← VOLTAR</button>
+    <button class="btn" onclick="window.game.showMenu()" style="margin-top:14px;">← VOLTAR</button>
   </div>
 
   <div class="controls-hint" id="controls-hint">WASD/Setas: mover • Mouse: mirar • Clique/Espaço: atirar</div>
 </div>
 
-<!-- Modules loaded in dependency order (classic scripts, works via file://) -->
-<script src="src/config.js"></script>
-<script src="src/content.js"></script>
-<script src="src/utils.js"></script>
-<script src="src/assets.js"></script>
-<script src="src/audio.js"></script>
-<script src="src/input.js"></script>
-<script src="src/sprites.js"></script>
-<script src="src/background.js"></script>
-<script src="src/particles.js"></script>
-<script src="src/entities/player.js"></script>
-<script src="src/entities/bullet.js"></script>
-<script src="src/entities/germ.js"></script>
-<script src="src/entities/powerup.js"></script>
-<script src="src/hud.js"></script>
-<script src="src/screens.js"></script>
-<script src="src/game.js"></script>
-<script src="src/main.js"></script>
+<script type="module" src="/src/main.ts"></script>
 </body>
 </html>

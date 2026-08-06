@@ -1,0 +1,23 @@
+{
+  "name": "germ-hunter-v2",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Caçador de Germes: Crônicas de Áureo Sol — arcade shooter em PixiJS + TypeScript",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -p tsconfig.json && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "pixi.js": "^8.19.0"
+  },
+  "devDependencies": {
+    "typescript": "~5.9.3",
+    "vite": "^6.4.0"
+  },
+  "allowScripts": {
+    "esbuild@0.25.12": true
+  }
+}
