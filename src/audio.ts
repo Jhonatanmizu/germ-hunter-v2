@@ -33,9 +33,9 @@ export class AudioSystem {
     o.stop(t + dur);
   }
 
-  private sweep(f1: number, f2: number, dur: number, type: OscillatorType, gain: number): void {
+  private sweep(f1: number, f2: number, dur: number, type: OscillatorType, gain: number, delay = 0): void {
     if (!this.ctx || this.muted) return;
-    const t = this.ctx.currentTime;
+    const t = this.ctx.currentTime + delay;
     const o = this.ctx.createOscillator();
     const g = this.ctx.createGain();
     o.type = type;
@@ -96,6 +96,28 @@ export class AudioSystem {
     this.tone(659, 0.1, 'triangle', 0.1, 0.1);
     this.tone(784, 0.1, 'triangle', 0.1, 0.2);
     this.tone(1047, 0.2, 'triangle', 0.12, 0.3);
+  }
+
+  bossRoar(): void {
+    this.sweep(120, 40, 0.7, 'sawtooth', 0.1);
+    this.sweep(90, 30, 0.9, 'square', 0.06, 0.15);
+    this.tone(60, 0.6, 'triangle', 0.12, 0.1);
+  }
+
+  bossHit(): void {
+    this.tone(180, 0.06, 'square', 0.07);
+  }
+
+  bossStageUp(): void {
+    this.sweep(160, 480, 0.25, 'sawtooth', 0.08);
+    this.tone(240, 0.12, 'square', 0.07, 0.05);
+    this.tone(320, 0.12, 'square', 0.07, 0.12);
+    this.tone(480, 0.22, 'square', 0.09, 0.19);
+  }
+
+  destroy(): void {
+    this.tone(700, 0.05, 'square', 0.06);
+    this.sweep(500, 900, 0.08, 'square', 0.05, 0.03);
   }
 
   click(): void {

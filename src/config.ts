@@ -73,9 +73,22 @@ export const CFG = {
     maxOnScreen: 3
   },
 
+  BOSS: {
+    size: 140,
+    y: 95,
+    maxHp: 80,
+    speed: [42, 62, 88],
+    chargeSpeed: 230,
+    attackInterval: [2.3, 1.75, 1.25],
+    ringCount: [10, 12, 16],
+    spreadCount: [5, 6, 7],
+    minionCount: [2, 3, 4],
+    projectileSpeed: [75, 95, 125],
+    contactContam: 12
+  },
+
   PHASE_1_SCORE: 200,
   PHASE_2_SCORE: 500,
-  PHASE_3_SCORE: 1000,
   MAX_CONTAM: 100
 } as const;
 

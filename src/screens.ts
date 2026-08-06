@@ -2,9 +2,17 @@ import { CONTENT, STORY } from './content';
 import { U } from './utils';
 import type { GameStats } from './hud';
 
-/** Gerenciador de telas DOM (menu, história, instruções, fase, game over, final, créditos). */
+/** Gerenciador de telas DOM (menu, história, cutscene, instruções, fase, game over, final, créditos). */
 export class ScreenManager {
   current = 'menu';
+
+  // ---- cutscene (máquina de escrever) ----
+  private cutscenePageIdx = 0;
+  private cutsceneLineIdx = 0;
+  private cutsceneTyping = false;
+  private cutsceneReady = false;
+  private typer: number | null = null;
+  private cutsceneLineEls: HTMLParagraphElement[] = [];
 
   private buildInstructions(): void {
     const list = document.getElementById('instructions-list');
@@ -65,35 +73,175 @@ export class ScreenManager {
   }
 
   showMenu(): void {
+    this.clearTyper();
     this.set('menu-screen');
   }
 
   showStory(): void {
+    this.clearTyper();
     this.buildStory();
     this.set('story-screen');
   }
 
+  // ---- cutscene ----
+  showCutscene(): void {
+    this.clearTyper();
+    this.cutscenePageIdx = 0;
+    this.startCutscenePage();
+    this.set('cutscene-screen');
+  }
+
+  private clearTyper(): void {
+    if (this.typer !== null) {
+      clearInterval(this.typer);
+      this.typer = null;
+    }
+    this.cutsceneTyping = false;
+  }
+
+  private startCutscenePage(): void {
+    const page = STORY.cutscene[this.cutscenePageIdx];
+    if (!page) return;
+    const chapter = document.getElementById('cutscene-chapter');
+    if (chapter) chapter.textContent = page.chapter;
+    const box = document.getElementById('cutscene-lines');
+    const heroBox = document.getElementById('cutscene-hero');
+    if (box) box.innerHTML = '';
+    if (heroBox) heroBox.textContent = '';
+    if (heroBox) heroBox.classList.remove('visible');
+    this.cutsceneLineEls = [];
+    if (box) {
+      for (let i = 0; i < page.lines.length; i++) {
+        const p = document.createElement('p');
+        p.className = 'cutscene-line';
+        box.appendChild(p);
+        this.cutsceneLineEls.push(p);
+      }
+    }
+    this.cutsceneLineIdx = 0;
+    this.cutsceneReady = false;
+    this.typeNextLine();
+    this.updateCutsceneHint();
+  }
+
+  private typeNextLine(): void {
+    const page = STORY.cutscene[this.cutscenePageIdx];
+    if (!page) return;
+    if (this.cutsceneLineIdx >= page.lines.length) {
+      this.showCutsceneDoutor();
+      return;
+    }
+    const p = this.cutsceneLineEls[this.cutsceneLineIdx];
+    const text = page.lines[this.cutsceneLineIdx];
+    if (!p) return;
+    p.textContent = '';
+    let i = 0;
+    this.cutsceneTyping = true;
+    this.typer = window.setInterval(() => {
+      i++;
+      p.textContent = text.slice(0, i);
+      if (i >= text.length) {
+        this.clearTyper();
+        this.updateCutsceneHint();
+      }
+    }, 16);
+  }
+
+  private finishCutsceneLine(): void {
+    this.clearTyper();
+    const page = STORY.cutscene[this.cutscenePageIdx];
+    const p = this.cutsceneLineEls[this.cutsceneLineIdx];
+    if (page && p) p.textContent = page.lines[this.cutsceneLineIdx];
+    this.updateCutsceneHint();
+  }
+
+  private showCutsceneDoutor(): void {
+    const page = STORY.cutscene[this.cutscenePageIdx];
+    const heroBox = document.getElementById('cutscene-hero');
+    if (heroBox && page) {
+      heroBox.textContent = STORY.hero + ': "' + page.doutor + '"';
+      heroBox.classList.add('visible');
+    }
+    this.cutsceneReady = true;
+    this.updateCutsceneHint();
+  }
+
+  private updateCutsceneHint(): void {
+    const hint = document.getElementById('cutscene-hint');
+    if (!hint) return;
+    if (this.cutsceneTyping) {
+      hint.textContent = 'PRESSIONE ENTER ▸';
+    } else if (!this.cutsceneReady) {
+      hint.textContent = 'PRESSIONE ENTER ▸';
+    } else if (this.cutscenePageIdx >= STORY.cutscene.length - 1) {
+      hint.textContent = 'PRESSIONE ENTER PARA COMEÇAR ▶';
+    } else {
+      hint.textContent = 'PRESSIONE ENTER ▸';
+    }
+  }
+
+  /**
+   * Avança a cutscene. Retorna:
+   * 'typing' — a linha atual foi completada;
+   * 'page' — avançou para a próxima linha/página;
+   * 'done' — cutscene terminou.
+   */
+  cutsceneAdvance(): 'typing' | 'page' | 'done' {
+    if (this.cutsceneTyping) {
+      this.finishCutsceneLine();
+      return 'typing';
+    }
+    if (!this.cutsceneReady) {
+      this.cutsceneLineIdx++;
+      this.typeNextLine();
+      return 'page';
+    }
+    this.cutscenePageIdx++;
+    if (this.cutscenePageIdx >= STORY.cutscene.length) {
+      this.clearTyper();
+      return 'done';
+    }
+    this.startCutscenePage();
+    return 'page';
+  }
+
   showInstructions(): void {
+    this.clearTyper();
     this.buildInstructions();
     this.set('instructions-screen');
   }
 
   showCredits(): void {
+    this.clearTyper();
     this.buildCredits();
     this.set('credits-screen');
   }
 
   showPhase(phase: number): void {
+    this.clearTyper();
     const n = document.getElementById('phase-number');
     if (n) n.textContent = String(phase);
+    const ch = document.getElementById('phase-chapter');
+    if (ch) ch.textContent = STORY.phases[phase - 1].chapter;
     const t = document.getElementById('phase-title');
     if (t) t.textContent = STORY.phases[phase - 1].title;
     const m = document.getElementById('phase-message');
     if (m) m.textContent = STORY.phases[phase - 1].message;
+    const d = document.getElementById('phase-doutor');
+    if (d) d.textContent = STORY.hero + ': "' + STORY.phases[phase - 1].doutor + '"';
     const c = document.getElementById('phase-curiosity');
-    if (c) c.textContent = CONTENT.curiosities[(phase - 1) % CONTENT.curiosities.length];
+    if (c) {
+      c.textContent =
+        phase === 3
+          ? STORY.boss.name + ' — ' + STORY.boss.subtitle + '. ' + STORY.boss.intro
+          : CONTENT.curiosities[(phase - 1) % CONTENT.curiosities.length];
+      c.classList.toggle('boss-curiosity', phase === 3);
+    }
     const btn = document.getElementById('phase-btn');
-    if (btn) btn.textContent = phase === 1 ? '▶ COMEÇAR' : '▶ CONTINUAR';
+    if (btn) {
+      btn.textContent = phase === 1 ? '▶ COMEÇAR' : '▶ CONTINUAR';
+      btn.textContent = phase === 3 ? '⚔ ENFRENTAR' : btn.textContent;
+    }
     this.set('phase-screen');
   }
 
@@ -124,6 +272,7 @@ export class ScreenManager {
   }
 
   hideAll(): void {
+    this.clearTyper();
     for (const el of document.querySelectorAll('.screen')) {
       el.classList.remove('active');
     }

@@ -13,10 +13,17 @@ const SPRITE_W = 129;
 const SPRITE_H = 80;
 const BODY_ANCHOR_X = 49 / SPRITE_W;
 
-/** O herói: Doutor Juryscleitin. Movimento, mira, disparo e vida. */
+/**
+ * O herói: Doutor Juryscleitin.
+ * Animação procedural (sem sprites de animação): sombra, aura, respiração parado,
+ * ciclo de corrida com squash & stretch, inclinação na movimentação, recuo no tiro
+ * e flash de dano.
+ */
 export class Player {
   readonly view = new Container();
   private sprite: Sprite;
+  private shadow = new Graphics();
+  private glow = new Graphics();
   private aimLine = new Graphics();
   private muzzle = new Graphics();
   private cfg: CfgType;
@@ -37,12 +44,14 @@ export class Player {
   bob = 0;
   moving = false;
   muzzleFlash = 0;
+  recoil = 0;
+  hitFlash = 0;
 
   constructor(cfg: CfgType, layer: Container, private bulletLayer: Container) {
     this.cfg = cfg;
     this.sprite = new Sprite(getCharacterTexture());
     this.sprite.anchor.set(BODY_ANCHOR_X, 0.5);
-    this.view.addChild(this.aimLine, this.sprite, this.muzzle);
+    this.view.addChild(this.shadow, this.glow, this.aimLine, this.sprite, this.muzzle);
     layer.addChild(this.view);
     this.reset();
   }
@@ -65,6 +74,8 @@ export class Player {
     this.bob = 0;
     this.moving = false;
     this.muzzleFlash = 0;
+    this.recoil = 0;
+    this.hitFlash = 0;
   }
 
   update(dt: number, input: InputManager, bullets: Bullet[], audio: AudioSystem): void {
@@ -81,7 +92,7 @@ export class Player {
 
     if (this.moving) {
       this.animTime += dt;
-      this.bob = Math.sin(this.animTime * 14) * 1.5;
+      this.bob = Math.sin(this.animTime * 13) * 2.2;
     } else {
       this.animTime = 0;
       this.bob = 0;
@@ -95,6 +106,8 @@ export class Player {
     }
     if (this.muzzleFlash > 0) this.muzzleFlash -= dt;
     if (this.invuln > 0) this.invuln -= dt;
+    this.recoil = Math.max(0, this.recoil - dt * 6);
+    this.hitFlash = Math.max(0, this.hitFlash - dt);
   }
 
   private fire(bullets: Bullet[], audio: AudioSystem): void {
@@ -104,6 +117,7 @@ export class Player {
     const by = this.y + Math.sin(this.aim) * muzzleDist;
     bullets.push(new Bullet(bx, by, this.aim, C.PLAYER.bulletSpeed, C.BULLET.size, C.BULLET.life, this.bulletLayer));
     this.muzzleFlash = 0.07;
+    this.recoil = 1;
     audio.shoot();
   }
 
@@ -111,16 +125,60 @@ export class Player {
     if (this.invuln > 0) return false;
     this.health--;
     this.invuln = this.cfg.PLAYER.invulnTime;
+    this.hitFlash = 0.25;
     audio.hit();
     return true;
   }
 
   draw(): void {
+    const now = U.now();
     const scale = (this.size * 1.15) / SPRITE_H;
-    this.sprite.scale.set(this.facingLeft ? -scale : scale, scale);
-    this.sprite.position.set(this.x, this.y + this.bob);
+    const bobPhase = this.animTime * 13;
 
-    const blink = this.invuln > 0 && Math.floor(U.now() * 12) % 2 === 0;
+    // sombra no chão (encolhe quando o herói sobe no pulo da corrida)
+    this.shadow.clear();
+    const rise = Math.max(0, Math.sin(bobPhase));
+    const shScale = this.moving ? 1 - rise * 0.16 : 1;
+    this.shadow.position.set(this.x, this.y + this.size * 0.62);
+    this.shadow.ellipse(0, 0, this.size * 0.34 * shScale, this.size * 0.11 * shScale).fill({
+      color: 0x000000,
+      alpha: 0.35
+    });
+
+    // aura de energia
+    this.glow.clear();
+    const lowHp = this.health <= 1;
+    const invulnPulse = this.invuln > 0 ? Math.sin(now * 18) * 0.5 + 0.5 : 0;
+    const auraBase = lowHp ? 0.1 : 0.05;
+    const auraR = this.size * (0.78 + Math.sin(now * 3) * 0.06 + invulnPulse * 0.12);
+    this.glow.position.set(this.x, this.y);
+    this.glow.circle(0, 0, auraR).fill({ color: lowHp ? P.red : P.cyan, alpha: auraBase + invulnPulse * 0.14 });
+
+    // squash & stretch
+    let sx = scale;
+    let sy = scale;
+    if (this.moving) {
+      const impact = Math.max(0, -Math.sin(bobPhase));
+      const stretch = Math.max(0, Math.sin(bobPhase));
+      sx *= 1 + impact * 0.09 - stretch * 0.05;
+      sy *= 1 - impact * 0.1 + stretch * 0.07;
+    } else {
+      const br = Math.sin(now * 3);
+      sx *= 1 + br * 0.015;
+      sy *= 1 - br * 0.015;
+    }
+
+    // inclinação leve na direção do movimento
+    const lean = U.clamp(this.vx * 0.0013, -0.12, 0.12) * (this.facingLeft ? -1 : 1);
+    this.sprite.rotation = lean;
+
+    this.sprite.scale.set(this.facingLeft ? -sx : sx, sy);
+    const rx = -Math.cos(this.aim) * this.recoil * 5;
+    const ry = -Math.sin(this.aim) * this.recoil * 5;
+    this.sprite.position.set(this.x + rx, this.y + this.bob + ry);
+
+    this.sprite.tint = this.hitFlash > 0 ? 0xff9a9a : 0xffffff;
+    const blink = this.invuln > 0 && Math.floor(now * 12) % 2 === 0;
     this.sprite.visible = !blink;
 
     const len = 60;

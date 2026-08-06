@@ -1,5 +1,6 @@
 import { Container, Graphics, Text, FillGradient } from 'pixi.js';
 import { P } from './config';
+import { STORY } from './content';
 import { U } from './utils';
 
 export interface GameStats {
@@ -10,21 +11,28 @@ export interface GameStats {
   contamination: number;
   health: number;
   maxHealth: number;
+  boss?: { hp: number; maxHp: number } | null;
 }
 
 const FONT = '"Press Start 2P", monospace';
 const PHASE_COLORS = [P.cyan, P.green, P.yellow];
 
-/** HUD: fase, pontuação, tempo, barra de contaminação e corações de vida. */
+/** HUD: fase, pontuação, tempo, contaminação, corações, objetivo, barra do chefe e legendas. */
 export class HUD {
   readonly container = new Container();
   private bg = new Graphics();
   private bar = new Graphics();
   private hearts = new Graphics();
+  private bossBar = new Graphics();
   private phaseText: Text;
   private scoreText: Text;
   private timeText: Text;
   private pctText: Text;
+  private objectiveText: Text;
+  private bossLabel: Text;
+  private subtitle: Text;
+  private subtitleTimer = 0;
+  private subtitleDur = 1;
   private barGradient: FillGradient;
 
   constructor(private w: number, private h: number) {
@@ -44,11 +52,35 @@ export class HUD {
       text: '',
       style: { fontFamily: FONT, fontSize: 6, fill: P.text }
     });
+    this.objectiveText = new Text({
+      text: '',
+      style: { fontFamily: FONT, fontSize: 7, fill: P.cyanMid }
+    });
+    this.bossLabel = new Text({
+      text: 'CHEFE',
+      style: { fontFamily: FONT, fontSize: 7, fill: P.red }
+    });
+    this.subtitle = new Text({
+      text: '',
+      style: {
+        fontFamily: FONT,
+        fontSize: 8,
+        fill: P.yellow,
+        stroke: { color: 0x000000, width: 3 },
+        align: 'center'
+      }
+    });
 
     this.phaseText.anchor.set(0, 0.5);
     this.scoreText.anchor.set(0, 0.5);
     this.timeText.anchor.set(1, 0.5);
     this.pctText.anchor.set(0.5, 0.5);
+    this.objectiveText.anchor.set(0, 0.5);
+    this.bossLabel.anchor.set(0.5, 0.5);
+    this.subtitle.anchor.set(0.5, 0.5);
+
+    this.subtitle.position.set(w / 2, h - 22);
+    this.subtitle.visible = false;
 
     this.barGradient = new FillGradient({
       type: 'linear',
@@ -61,7 +93,34 @@ export class HUD {
       ]
     });
 
-    this.container.addChild(this.bg, this.bar, this.hearts, this.phaseText, this.scoreText, this.timeText, this.pctText);
+    this.container.addChild(
+      this.bg,
+      this.bar,
+      this.hearts,
+      this.bossBar,
+      this.phaseText,
+      this.scoreText,
+      this.timeText,
+      this.pctText,
+      this.objectiveText,
+      this.bossLabel,
+      this.subtitle
+    );
+  }
+
+  showSubtitle(text: string, dur: number): void {
+    this.subtitle.text = text;
+    this.subtitleTimer = dur;
+    this.subtitleDur = dur;
+  }
+
+  clearSubtitle(): void {
+    this.subtitleTimer = 0;
+    this.subtitle.visible = false;
+  }
+
+  tick(dt: number): void {
+    if (this.subtitleTimer > 0) this.subtitleTimer -= dt;
   }
 
   draw(stats: GameStats): void {
@@ -109,6 +168,43 @@ export class HUD {
     for (let i = 0; i < stats.maxHealth; i++) {
       const full = i < stats.health;
       this.heart(hx + i * 12, hy, 4, full ? P.red : { color: P.textDark, alpha: 0.6 });
+    }
+
+    this.objectiveText.text = STORY.phases[stats.phase - 1]?.objective ?? '';
+    this.objectiveText.position.set(8, 36);
+
+    // barra do chefe (Fase 3)
+    this.bossBar.clear();
+    this.bossLabel.visible = false;
+    if (stats.boss && stats.boss.maxHp > 0 && stats.phase === 3) {
+      const bw = 190;
+      const bh = 9;
+      const bx = (w - bw) / 2;
+      const by = 42;
+      this.bossLabel.visible = true;
+      this.bossLabel.position.set(bx - 8, by + bh / 2);
+      this.bossBar.rect(bx, by, bw, bh).fill(P.bgDeep);
+      this.bossBar.rect(bx, by, bw, bh).stroke({ width: 1, color: P.red });
+      const fw = Math.max(0, stats.boss.hp / stats.boss.maxHp) * (bw - 2);
+      if (fw > 0) {
+        this.bossBar.rect(bx + 1, by + 1, fw, bh - 2).fill({ color: P.red, alpha: 0.9 });
+        if (stats.boss.hp / stats.boss.maxHp < 0.34) {
+          const pulse = Math.sin(U.now() * 6) * 0.3 + 0.7;
+          this.bossBar.rect(bx + 1, by + 1, fw, bh - 2).fill({ color: 0xff4444, alpha: pulse * 0.6 });
+        }
+      }
+    }
+
+    // legenda do herói
+    if (this.subtitleTimer > 0) {
+      const total = this.subtitleDur;
+      const t = this.subtitleTimer;
+      const fadeIn = U.clamp((total - t) / 0.25, 0, 1);
+      const fadeOut = U.clamp(t / 0.4, 0, 1);
+      this.subtitle.alpha = Math.min(fadeIn, fadeOut);
+      this.subtitle.visible = true;
+    } else {
+      this.subtitle.visible = false;
     }
   }
 

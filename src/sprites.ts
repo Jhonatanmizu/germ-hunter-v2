@@ -65,6 +65,66 @@ export function drawGel(g: Graphics, s: number): void {
   g.rect(-w * 0.12, -h * 0.55, w * 0.24, h * 0.18).fill(P.tealDark);
 }
 
+/**
+ * O Esporo-Mestre: vírus gigante que pulsa e encara o jogador.
+ * lx/ly indicam a direção do olhar (entre -1 e 1) para as pupilas.
+ */
+export function drawMegaVirus(g: Graphics, s: number, t: number, lx = 0, ly = 0): void {
+  const r = s * 0.42;
+  const pulse = Math.sin(t * 4) * 0.04 + 1;
+
+  g.circle(0, 0, r * 2).fill({ color: P.red, alpha: 0.07 + Math.sin(t * 5) * 0.025 });
+
+  for (let i = 0; i < 14; i++) {
+    const a = (i / 14) * Math.PI * 2 + t * 0.3;
+    const len = r * (1.35 + Math.sin(t * 3 + i) * 0.25);
+    const sx = Math.cos(a) * len;
+    const sy = Math.sin(a) * len;
+    g.circle(sx, sy, r * (i % 2 === 0 ? 0.34 : 0.26) * pulse).fill(i % 2 === 0 ? P.redDark : P.red);
+  }
+
+  g.circle(0, 0, r).fill(P.red);
+  g.circle(0, 0, r).stroke({ width: 3, color: P.redDark });
+
+  g.circle(0, 0, r * 0.62).fill(P.redDark);
+  g.circle(0, 0, r * 0.34).fill(P.redDeep);
+
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2 + t * 0.8;
+    g.circle(Math.cos(a) * r * 0.5, Math.sin(a) * r * 0.5, r * 0.1).fill({ color: 0x7f1d1d, alpha: 0.8 });
+  }
+
+  const eyeOff = r * 0.28;
+  const eyeY = -r * 0.22;
+  const pup = r * 0.16;
+  const lookX = Uclamp(lx, -1, 1) * r * 0.1;
+  const lookY = Uclamp(ly, -1, 1) * r * 0.1;
+
+  g.circle(-eyeOff, eyeY, r * 0.28).fill(0xffffff);
+  g.circle(eyeOff, eyeY, r * 0.28).fill(0xffffff);
+  g.circle(-eyeOff + lookX, eyeY + lookY, pup).fill(0x3d0303);
+  g.circle(eyeOff + lookX, eyeY + lookY, pup).fill(0x3d0303);
+  g.circle(-eyeOff + lookX - pup * 0.3, eyeY + lookY - pup * 0.3, pup * 0.35).fill(0xffffff);
+  g.circle(eyeOff + lookX - pup * 0.3, eyeY + lookY - pup * 0.3, pup * 0.35).fill(0xffffff);
+
+  const mouthY = r * 0.35;
+  const mouthW = r * 0.42;
+  g.arc(0, mouthY, mouthW, 0.15, Math.PI - 0.15).stroke({ width: 2.5, color: 0x3d0303 });
+  const teeth = 4;
+  for (let i = 0; i < teeth; i++) {
+    const tx = -mouthW + ((i + 0.5) * mouthW * 2) / teeth;
+    const ty = mouthY + Math.sqrt(Math.max(0, mouthW * mouthW - tx * tx)) * 0.45;
+    g.poly([tx - 3, ty, tx + 3, ty, tx, ty + 6]).fill(0xffffff);
+  }
+
+  g.circle(0, -r * 0.75, r * 0.16).fill({ color: P.red, alpha: 0.5 });
+  g.circle(0, r * 0.95, r * 0.12).fill({ color: P.red, alpha: 0.45 });
+}
+
+function Uclamp(v: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, v));
+}
+
 export function drawVaccine(g: Graphics, s: number): void {
   const w = s * 0.5;
   const h = s * 0.6;
