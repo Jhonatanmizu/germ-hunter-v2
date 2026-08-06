@@ -1,6 +1,9 @@
 /**
  * InputManager: teclado + mouse + toque (joystick virtual + botões).
  * Converte as coordenadas para a resolução interna do jogo (CFG.W/CFG.H).
+ *
+ * O disparo (mouse ou toque) é tratado via eventos pointerdown/up, porque
+ * cancelar o pointerdown impede os eventos de compatibilidade (mousedown).
  */
 export class InputManager {
   private keys: Record<string, boolean> = {};
@@ -11,6 +14,7 @@ export class InputManager {
 
   // toque
   private joyId: number | null = null;
+  private firePointerId: number | null = null;
   private joyOrigin = { x: 0, y: 0 };
   private joyVec = { x: 0, y: 0 };
   private touchFire = false;
@@ -54,33 +58,17 @@ export class InputManager {
       this.mouse.x = p.x;
       this.mouse.y = p.y;
     });
-    this.canvas.addEventListener('mousedown', () => {
-      this.mouse.down = true;
-      this.firePressed = true;
-    });
-    this.canvas.addEventListener('mouseup', () => {
-      this.mouse.down = false;
-    });
-    this.canvas.addEventListener('mouseleave', () => {
-      this.mouse.down = false;
-    });
 
-    this.bindTouch();
-  }
-
-  private bindTouch(): void {
-    const canvas = this.canvas;
-    canvas.addEventListener('contextmenu', (e) => e.preventDefault());
-
-    canvas.addEventListener(
+    this.canvas.addEventListener(
       'pointerdown',
       (e) => {
         e.preventDefault();
         const p = this.toGame(e.clientX, e.clientY);
         this.mouse.x = p.x;
         this.mouse.y = p.y;
-        // metade esquerda = joystick virtual
-        if (p.x < this.scaleTo.w * 0.62 && this.joyId === null) {
+
+        // metade esquerda no toque = joystick virtual
+        if (e.pointerType === 'touch' && p.x < this.scaleTo.w * 0.62 && this.joyId === null) {
           this.joyId = e.pointerId;
           this.joyOrigin.x = p.x;
           this.joyOrigin.y = p.y;
@@ -88,16 +76,19 @@ export class InputManager {
           this.joyVec.y = 0;
           return;
         }
-        // metade direita = atirar (somente toque; o mouse usa mousedown)
-        if (this.touchFire === false && e.pointerType === 'touch') {
-          this.touchFire = true;
+
+        // qualquer outro toque ou clique do mouse = atirar
+        if (this.firePointerId === null) {
+          this.firePointerId = e.pointerId;
           this.firePressed = true;
+          this.mouse.down = true;
+          if (e.pointerType === 'touch') this.touchFire = true;
         }
       },
       { passive: false }
     );
 
-    canvas.addEventListener(
+    this.canvas.addEventListener(
       'pointermove',
       (e) => {
         const p = this.toGame(e.clientX, e.clientY);
@@ -117,18 +108,24 @@ export class InputManager {
       { passive: false }
     );
 
-    const endTouch = (e: PointerEvent) => {
+    const endPointer = (e: PointerEvent) => {
       if (e.pointerId === this.joyId) {
         this.joyId = null;
         this.joyVec.x = 0;
         this.joyVec.y = 0;
       }
-      if (e.pointerType === 'touch') {
+      if (e.pointerId === this.firePointerId) {
+        this.firePointerId = null;
+        this.mouse.down = false;
         this.touchFire = false;
       }
     };
-    canvas.addEventListener('pointerup', endTouch);
-    canvas.addEventListener('pointercancel', endTouch);
+    this.canvas.addEventListener('pointerup', endPointer);
+    this.canvas.addEventListener('pointercancel', endPointer);
+    window.addEventListener('pointerup', endPointer);
+    window.addEventListener('pointercancel', endPointer);
+
+    this.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
   }
 
   /** Posição atual do joystick virtual (para desenhar a UI). */
@@ -147,6 +144,7 @@ export class InputManager {
   setExternalFire(on: boolean): void {
     this.touchFire = on;
     if (on) this.firePressed = true;
+    else this.mouse.down = false;
   }
 
   /** Botão externo (DOM) de dash. */
