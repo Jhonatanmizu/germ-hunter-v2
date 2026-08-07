@@ -1,27 +1,26 @@
-import { Container, Graphics, Sprite } from 'pixi.js';
+import { Container, Graphics } from 'pixi.js';
 import type { InputManager } from '../input';
 import type { AudioSystem } from '../audio';
 import { Bullet } from './bullet';
-import { getCharacterTexture } from '../assets';
+import { HeroGraphics } from './heroGraphics';
 import { P } from '../config';
 import { U } from '../utils';
 import type { CFG } from '../config';
 
 type CfgType = typeof CFG;
 
-const SPRITE_W = 129;
-const SPRITE_H = 80;
-const BODY_ANCHOR_X = 49 / SPRITE_W;
+const HERO_H = 48;
 
 /**
  * O herói: Doutor Juryscleitin.
- * Animação procedural (sem sprites de animação): sombra, aura, respiração parado,
- * ciclo de corrida com squash & stretch, inclinação na movimentação, recuo no tiro,
- * flash de dano e dash com invulnerabilidade.
+ * Desenhado proceduralmente em PixiJS — homem negro com cabelo black power (afro),
+ * jaleco de cientista e pistola de soro.
+ * Animações: piscar, bounce do afro, recuo do braço, inclinação da cabeça,
+ * pernas ao correr, gota de suor com HP baixo e squint ao tomar dano.
  */
 export class Player {
   readonly view = new Container();
-  private sprite: Sprite;
+  private hero: HeroGraphics;
   private shadow = new Graphics();
   private glow = new Graphics();
   private dashFx = new Graphics();
@@ -55,9 +54,8 @@ export class Player {
 
   constructor(cfg: CfgType, layer: Container, private bulletLayer: Container) {
     this.cfg = cfg;
-    this.sprite = new Sprite(getCharacterTexture());
-    this.sprite.anchor.set(BODY_ANCHOR_X, 0.5);
-    this.view.addChild(this.shadow, this.glow, this.dashFx, this.aimLine, this.sprite, this.muzzle);
+    this.hero = new HeroGraphics();
+    this.view.addChild(this.shadow, this.glow, this.dashFx, this.aimLine, this.hero, this.muzzle);
     layer.addChild(this.view);
     this.reset();
   }
@@ -178,7 +176,7 @@ export class Player {
 
   draw(): void {
     const now = U.now();
-    const scale = (this.size * 1.15) / SPRITE_H;
+    const scale = (this.size * 1.15) / HERO_H;
     const bobPhase = this.animTime * 13;
     const dashing = this.dashT > 0;
 
@@ -229,18 +227,31 @@ export class Player {
       sy *= 1 - br * 0.015;
     }
 
-    // inclinação leve na direção do movimento
-    const lean = U.clamp(this.vx * 0.0013, -0.12, 0.12) * (this.facingLeft ? -1 : 1);
-    this.sprite.rotation = lean;
-
-    this.sprite.scale.set(this.facingLeft ? -sx : sx, sy);
     const rx = -Math.cos(this.aim) * this.recoil * 5;
     const ry = -Math.sin(this.aim) * this.recoil * 5;
-    this.sprite.position.set(this.x + rx, this.y + this.bob + ry);
 
-    this.sprite.tint = this.hitFlash > 0 ? 0xff9a9a : 0xffffff;
     const blink = this.invuln > 0 && !dashing && Math.floor(now * 12) % 2 === 0;
-    this.sprite.visible = !blink;
+    this.hero.visible = !blink;
+
+    this.hero.update({
+      time: this.animTime,
+      now,
+      bob: this.bob,
+      moving: this.moving,
+      dashing,
+      facingLeft: this.facingLeft,
+      recoil: this.recoil,
+      aim: this.aim,
+      hitFlash: this.hitFlash,
+      invuln: this.invuln,
+      lowHp,
+      vx: this.vx,
+      vy: this.vy,
+      scaleX: sx,
+      scaleY: sy,
+      baseX: this.x + rx,
+      baseY: this.y + ry
+    });
 
     const len = 60;
     this.aimLine.clear();
