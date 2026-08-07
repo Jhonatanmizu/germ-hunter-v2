@@ -243,6 +243,14 @@ export class Game {
     }
   }
 
+  /** Pula a cutscene e vai direto para a missão. */
+  skipCutscene(): void {
+    if (this.state !== 'story') return;
+    audio.click();
+    this.screens.clearTyper();
+    this.startMission();
+  }
+
   startMission(): void {
     audio.init();
     audio.click();

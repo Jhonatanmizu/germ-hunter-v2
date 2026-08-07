@@ -69,27 +69,28 @@ export class HeroGraphics extends Container {
     super();
     this.headGroup.addChild(this.headBase, this.eye);
     this.armGroup.addChild(this.arm, this.weapon);
-    this.addChild(this.legs, this.torso, this.armGroup, this.headGroup, this.afro, this.sweat);
+    // afro goes BEHIND head so face stays fully visible
+    this.addChild(this.legs, this.torso, this.armGroup, this.afro, this.headGroup, this.sweat);
     this.drawBase();
   }
 
   private drawBase(): void {
-    // === AFRO (black power / cloud shape) ===
+    // === AFRO (black power / cloud shape) — sits BEHIND the head ===
     this.afro.clear();
-    const ay = -18;
+    const ay = -22; // raised higher so it doesn't cover the face
     const puffs = [
       { x: 0, y: ay - 10, r: 10, c: AFRO_BASE },
       { x: -10, y: ay - 6, r: 8, c: AFRO_HIGH },
       { x: 10, y: ay - 6, r: 8, c: AFRO_HIGH },
-      { x: -12, y: ay + 2, r: 7, c: AFRO_BASE },
-      { x: 12, y: ay + 2, r: 7, c: AFRO_BASE },
+      { x: -12, y: ay - 2, r: 7, c: AFRO_BASE },
+      { x: 12, y: ay - 2, r: 7, c: AFRO_BASE },
       { x: -7, y: ay - 13, r: 8, c: AFRO_BASE },
       { x: 7, y: ay - 13, r: 8, c: AFRO_BASE },
-      { x: 0, y: ay + 7, r: 7, c: AFRO_HIGH },
-      { x: -9, y: ay + 5, r: 6, c: AFRO_BASE },
-      { x: 9, y: ay + 5, r: 6, c: AFRO_BASE },
-      { x: -14, y: ay - 3, r: 6, c: AFRO_HIGH },
-      { x: 14, y: ay - 3, r: 6, c: AFRO_HIGH },
+      { x: 0, y: ay + 2, r: 7, c: AFRO_HIGH },
+      { x: -9, y: ay, r: 6, c: AFRO_BASE },
+      { x: 9, y: ay, r: 6, c: AFRO_BASE },
+      { x: -14, y: ay - 7, r: 6, c: AFRO_HIGH },
+      { x: 14, y: ay - 7, r: 6, c: AFRO_HIGH },
     ];
     for (const p of puffs) {
       this.afro.circle(p.x, p.y, p.r).fill({ color: p.c });
@@ -97,35 +98,45 @@ export class HeroGraphics extends Container {
 
     // === HEAD (profile facing right) ===
     this.headBase.clear();
-    // Skull / back of head
-    this.headBase.circle(-2, -10, 9).fill({ color: SKIN });
-    // Face profile via path
+    // Skull / back of head (slightly larger)
+    this.headBase.circle(-2, -11, 10).fill({ color: SKIN });
+    // Face profile via path (enlarged & more defined)
     this.headBase
-      .moveTo(2, -16)
-      .lineTo(7, -15)
-      .lineTo(10, -11) // forehead
-      .lineTo(11, -7)  // nose bridge
-      .lineTo(12, -4)  // nose tip
-      .lineTo(11, -1)  // under nose
-      .lineTo(10, 2)   // upper lip
-      .lineTo(9, 4)    // chin
-      .lineTo(3, 4)    // jaw
-      .lineTo(-2, 2)   // back to neck
+      .moveTo(2, -18)
+      .lineTo(8, -17)
+      .lineTo(12, -12) // forehead
+      .lineTo(13, -7)  // nose bridge
+      .lineTo(14, -3)  // nose tip
+      .lineTo(13, 0)   // under nose
+      .lineTo(12, 3)   // upper lip
+      .lineTo(11, 6)   // chin
+      .lineTo(4, 6)    // jaw
+      .lineTo(-2, 3)   // back to neck
       .closePath()
       .fill({ color: SKIN });
+    // Forehead highlight for depth
+    this.headBase
+      .moveTo(8, -17)
+      .lineTo(12, -12)
+      .lineTo(10, -12)
+      .lineTo(6, -16)
+      .closePath()
+      .fill({ color: 0x7a4d2e });
     // Nose shadow
     this.headBase
-      .moveTo(11, -7)
-      .lineTo(12, -4)
-      .lineTo(10, -4)
+      .moveTo(13, -7)
+      .lineTo(14, -3)
+      .lineTo(11, -3)
       .closePath()
       .fill({ color: SKIN_SHADOW });
     // Mouth (determined line)
-    this.headBase.moveTo(7, 2).lineTo(9, 2).stroke({ width: 1, color: 0x221100 });
+    this.headBase.moveTo(8, 3).lineTo(11, 3).stroke({ width: 1.2, color: 0x1a0d05 });
     // Ear
-    this.headBase.ellipse(-8, -7, 3, 4).fill({ color: SKIN });
-    // Eyebrow
-    this.headBase.moveTo(2, -13).lineTo(7, -13).stroke({ width: 1.5, color: 0x111111 });
+    this.headBase.ellipse(-9, -8, 3.5, 4.5).fill({ color: SKIN });
+    // Inner ear
+    this.headBase.ellipse(-9, -8, 1.5, 2.5).fill({ color: SKIN_SHADOW });
+    // Eyebrow (thicker)
+    this.headBase.moveTo(3, -15).lineTo(8, -15).stroke({ width: 2, color: 0x0a0a0a });
 
     this.drawEye(true);
 
@@ -171,11 +182,19 @@ export class HeroGraphics extends Container {
   private drawEye(open: boolean): void {
     this.eye.clear();
     if (open) {
-      this.eye.ellipse(5.5, -10, 3, 3).fill({ color: 0xffffff });
-      this.eye.ellipse(6.5, -10, 1.8, 1.8).fill({ color: 0x111111 });
-      this.eye.circle(5.5, -11, 0.8).fill({ color: 0xffffff });
+      // Bigger sclera
+      this.eye.ellipse(7, -12, 4, 4).fill({ color: 0xffffff });
+      // Bigger pupil
+      this.eye.ellipse(8, -12, 2.4, 2.4).fill({ color: 0x0a0a0a });
+      // Reflection dot (top-left)
+      this.eye.circle(6.5, -13.5, 1.2).fill({ color: 0xffffff });
+      // Smaller reflection dot (bottom-right)
+      this.eye.circle(8.8, -11, 0.6).fill({ color: 0xffffff });
+      // Upper eyelid line for definition
+      this.eye.moveTo(3, -13).lineTo(11, -13).stroke({ width: 1, color: 0x1a0d05 });
     } else {
-      this.eye.moveTo(3, -10).lineTo(8, -10).stroke({ width: 1.5, color: 0x111111 });
+      // Closed eye with curved eyelid
+      this.eye.moveTo(3, -12).lineTo(11, -12).stroke({ width: 2, color: 0x1a0d05 });
     }
   }
 
@@ -230,13 +249,13 @@ export class HeroGraphics extends Container {
       this.legs.position.y = 0;
     }
 
-    // Low HP sweat drop
+    // Low HP sweat drop (forehead area)
     this.sweat.clear();
     if (state.lowHp) {
-      const sx = 7;
-      const sy = -15 + Math.sin(state.now * 3) * 2;
-      this.sweat.circle(sx, sy, 1.2).fill({ color: 0x88ccff });
-      this.sweat.moveTo(sx, sy - 2).lineTo(sx - 0.5, sy + 2).stroke({ width: 0.8, color: 0x88ccff });
+      const sx = 9;
+      const sy = -18 + Math.sin(state.now * 3) * 2;
+      this.sweat.circle(sx, sy, 1.4).fill({ color: 0x88ccff });
+      this.sweat.moveTo(sx, sy - 2).lineTo(sx - 0.5, sy + 2.5).stroke({ width: 0.9, color: 0x88ccff });
     }
 
     // Dash wind / speed lines on weapon (subtle)

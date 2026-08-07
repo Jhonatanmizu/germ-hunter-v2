@@ -103,7 +103,7 @@ export class ScreenManager {
     this.set('cutscene-screen');
   }
 
-  private clearTyper(): void {
+  clearTyper(): void {
     if (this.typer !== null) {
       clearInterval(this.typer);
       this.typer = null;
